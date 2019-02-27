@@ -1,15 +1,25 @@
 var mapboxAccessToken = 'pk.eyJ1Ijoic2NiMDIwMTAiLCJhIjoiY2pzM2Y2eHdjMmVuaTQ1bzN6OGE3MnJrYiJ9.5QDjNpLmtS-Y9N3nP2rLdQ';
 
-choices = ['surveysh','modshare','sharedif']
+var whichone = 'modshare'
 
-var whichone = 'sharedif'
+drawmapbadexample()
 
-$('#ModelSurvey')
-    .change(function() {
-        var selection = $(this).find("option:selected").text();
+function updateview(buttonarg) {
+    if (buttonarg == 'Model') {
+        whichone = 'modshare'
+    } else if (buttonarg == 'Survey') {
+        whichone = 'surveysh'
+    } else if (buttonarg == 'Difference') {
+        whichone = 'sharedif'
+    }
+    return whichone,
+    updatemapbad();
+}
 
-        console.log(selection);
-    });
+$('.dropdown-menu a').click(function () {
+    $('#ModelSurvey').text($(this).text());
+    updateview(($(this).text()));
+});
 
 //style
 
@@ -109,7 +119,7 @@ function highlightFeature(e) {
         weight: 5,
         color: '#666',
         dashArray: '',
-        fillOpacity: 0.7
+        fillOpacity: 0.7,
     });
 
     if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
@@ -185,9 +195,19 @@ function getColor(d) {
                       '#FFEDA0';
 }
 
+function updatemapbad() {
+    map.eachLayer(function (layer) {
+        if (layer !== baselayer) {
+            map.removeLayer(layer);
+    }});
+    drawmapbadexample();
+}
 
+
+function drawmapbadexample() {
 var promise = $.getJSON("ringsectorswtransitboarding.json");
 promise.then(function(data) {
+    console.log(whichone)
     var pacestop = L.geoJson(data, {
         style:pacestyle,
         onEachFeature: function(feature, layer) {
@@ -224,9 +244,12 @@ promise.then(function(data) {
         $('.btn').removeClass('btn-light')
         $(this).addClass('btn-info');
     }
+    map.eachLayer(function (layer) {
+        if (layer !== baselayer) {
+            map.removeLayer(layer);
+        }});
         map.addLayer(metrastop)
-        map.removeLayer(ctastop)
-        map.removeLayer(pacestop)
+
     });
     $(document).on('click', '#pace', function() {
         $("#cta").removeClass('btn-info').addClass('btn-light')
@@ -235,10 +258,11 @@ promise.then(function(data) {
             $('.btn').removeClass('btn-light')
             $(this).addClass('btn-info');
         }
+        map.eachLayer(function (layer) {
+            if (layer !== baselayer) {
+                map.removeLayer(layer);
+            }});
         map.addLayer(pacestop)
-        map.removeLayer(ctastop)
-        map.removeLayer(metrastop)
-        map.removeLayer(metra)
     });
     $(document).on('click', '#cta', function() {
         $("#pace").removeClass('btn-info').addClass('btn-light')
@@ -247,37 +271,17 @@ promise.then(function(data) {
             $('.btn').removeClass('btn-light')
             $(this).addClass('btn-info');
         }
+        map.eachLayer(function (layer) {
+            if (layer !== baselayer) {
+            map.removeLayer(layer);
+        }});
         map.addLayer(ctastop)
-        map.removeLayer(metrastop)
-        map.removeLayer(pacestop)
-        map.removeLayer(metra)
 
     });
-});
-//var transitstops = L.geoJson(stops, {
-  //  pointToLayer: function (feature, latlng) {
-    //    var popupOptions = {maxWidth: 200};
-      //  var popupContent = "Station: " + feature.properties.STATION + "<br>" + feature.properties.TOTBRD;
-
-//         function getOptions(properties) {
-//             return {
-//                 radius: properties.TOTBRD / 900,
-//                 color: 'black',
-//                 fillColor: 'teal',
-//                 fillOpacity: 0.5,
-//                 opacity: 0.5,
-//                 weight: 0
-//             };
-//         }
-//         return L.circleMarker(latlng, getOptions(feature.properties)).bindPopup(popupContent, popupOptions);
-//     }
-// });
-
+});}
 
 //map
 map.addLayer(baselayer);
-//map.addLayer(transitstops);
-
 
 var legend = L.control({position: 'bottomright'});
 
