@@ -1,19 +1,25 @@
 var mapboxAccessToken = 'pk.eyJ1Ijoic2NiMDIwMTAiLCJhIjoiY2pzM2Y2eHdjMmVuaTQ1bzN6OGE3MnJrYiJ9.5QDjNpLmtS-Y9N3nP2rLdQ';
 
 var whichone = 'modshare'
-
-drawmapbadexample()
+var firsttime = true
+drawmap()
 
 function updateview(buttonarg) {
     if (buttonarg == 'Model') {
         whichone = 'modshare'
+        difflegend.remove(map)
+        legend.addTo(map)
     } else if (buttonarg == 'Survey') {
         whichone = 'surveysh'
+        difflegend.remove(map)
+        legend.addTo(map)
     } else if (buttonarg == 'Difference') {
         whichone = 'sharedif'
+        legend.remove(map)
+        difflegend.addTo(map)
     }
     return whichone,
-    updatemapbad();
+    updatemap();
 }
 
 $('.dropdown-menu a').click(function () {
@@ -24,6 +30,7 @@ $('.dropdown-menu a').click(function () {
 //style
 
 function pacestyle(feature) {
+    if (whichone !== 'sharedif') {
     return {
         fillColor: getColor(parseFloat(feature.properties['b_' + whichone])),
         weight: 2,
@@ -31,30 +38,62 @@ function pacestyle(feature) {
         color: 'white',
         dashArray: '3',
         fillOpacity: 0.7
-    };
+    }}
+    else {
+        return {
+            fillColor: getDiffColor(-parseFloat(feature.properties['b_' + whichone])),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7
+        }
+    }
 }
 
 function ctastyle(feature) {
-    return {
-        fillColor: getColor(parseFloat(feature.properties['c_' + whichone])),
-        weight: 2,
-        opacity: 1,
-        color: 'white',
-        dashArray: '3',
-        fillOpacity: 0.7
-    };
-}
+    if (whichone !== 'sharedif') {
+        return {
+            fillColor: getColor(parseFloat(feature.properties['c_' + whichone])),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7
+        }}
+        else {
+            return {
+                fillColor: getDiffColor(-parseFloat(feature.properties['c_' + whichone])),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            }
+        }
+    }
 
 function metrastyle(feature) {
-    return {
-        fillColor: getColor(parseFloat(feature.properties['m_' + whichone])),
-        weight: 2,
-        opacity: 1,
-        color: 'white',
-        dashArray: '3',
-        fillOpacity: 0.7
-    };
-}
+    if (whichone !== 'sharedif') {
+        return {
+            fillColor: getColor(parseFloat(feature.properties['m_' + whichone])),
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7
+        }}
+        else {
+            return {
+                fillColor: getDiffColor(-parseFloat(feature.properties['m_' + whichone])),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            }
+        }
+    }
 
 //layers
 
@@ -90,13 +129,14 @@ info.update = function(props) {
     :'Hover over a ring sector');
 }
     else {
-    this._div.innerHTML = '<h6>Share Difference</h6><font size="2">(survey - model)</font><br>' + (props ?
+    this._div.innerHTML = '<h6>Share Difference</h6><font size="2">(model - survey)</font><br>' + (props ?
         '<b>' + 'ring sector: ' + props.ringsector + '</b><br />' + 'difference: ' + getsharevalue(props)
         :'Hover over a ring sector');
     }
     };
 
 function getsharevalue(props) {
+    if (whichone !== 'sharedif') {
     if ($("#metra").hasClass("btn-info")) {
         var sharevalue = props['m_' + whichone]
     } else if ($("#pace").hasClass("btn-info")) {
@@ -105,7 +145,17 @@ function getsharevalue(props) {
         var sharevalue = props['c_' + whichone]
     } else {
         var sharevalue = 0
-    }
+    }}
+    else {
+        if ($("#metra").hasClass("btn-info")) {
+            var sharevalue = -parseFloat(props['m_' + whichone]) + "%"
+        } else if ($("#pace").hasClass("btn-info")) {
+            var sharevalue = -parseFloat(props['b_' + whichone]) + "%"
+        } else if ($("#cta").hasClass("btn-info")) {
+            var sharevalue = -parseFloat(props['c_' + whichone]) + "%"
+        } else {
+            var sharevalue = 0
+    }}
     return sharevalue
 };
 
@@ -169,19 +219,6 @@ var metra = L.geoJson(metradata, {
 var cta = L.geoJson(ctalines, {
 });
 
-// //
-// function onEachFeature(feature,layer) {
-//     layer.on({
-//         mouseover: highlightFeature,
-//         mouseout: resetHighlight,
-//         click: zoomToFeature
-//     });
-// }
-// geojson = L.geoJson(countiesdata, {
-//     style: style,
-//     onEachFeature: onEachFeature
-// }).addTo(map);
-// //
 
 // difference colors
 function getColor(d) {
@@ -195,19 +232,36 @@ function getColor(d) {
                       '#FFEDA0';
 }
 
-function updatemapbad() {
+function getDiffColor(d) {
+    return d > 20 ? '#800026' :
+           d > 15  ? '#BD0026' :
+           d > 10  ? '#E31A1C' :
+           d > 5  ? '#FC4E2A' :
+           d > 3   ? '#FD8D3C' :
+           d > 2   ? '#FEB24C' :
+           d > 1   ? '#FED976' :
+           d < -20  ? '#0570b0' :
+           d < -15  ? '#3690c0' :
+           d < -10  ? '#74a9cf' :
+           d < -5   ? '#a6bddb' :
+           d < -3   ? '#D0D1E6' :
+           d < -2   ? '#ECE7F2' :
+           d < -1   ? '#FFF7FB' :
+                      '#FFEDA0';
+}
+
+function updatemap() {
     map.eachLayer(function (layer) {
         if (layer !== baselayer) {
             map.removeLayer(layer);
     }});
-    drawmapbadexample();
+    firsttime = false
+    drawmap();
 }
 
-
-function drawmapbadexample() {
+function drawmap() {
 var promise = $.getJSON("ringsectorswtransitboarding.json");
 promise.then(function(data) {
-    console.log(whichone)
     var pacestop = L.geoJson(data, {
         style:pacestyle,
         onEachFeature: function(feature, layer) {
@@ -225,7 +279,7 @@ promise.then(function(data) {
                 'mouseout': resetHighlightmetra 
             });
         }
-    }).addTo(map);
+    });
     var ctastop = L.geoJson(data, {
         style: ctastyle,
         onEachFeature: function(feature, layer) {
@@ -236,8 +290,21 @@ promise.then(function(data) {
         }
     });
 
+    if (firsttime == true) {
+        metrastop.addTo(map);
+    }
+
+    if (firsttime == false) {
+        if ($("#cta").hasClass('btn-info')) {
+            ctastop.addTo(map);
+        } else if ($("#pace").hasClass('btn-info')) {
+            pacestop.addTo(map);
+        } else if ($("#metra").hasClass('btn-info')) {
+            metrastop.addTo(map);
+        }
+    }
+
     $(document).on('click', '#metra', function() {
-       // map.addLayer(metra)
        $("#cta").removeClass('btn-info').addClass('btn-light')
        $("#pace").removeClass('btn-info').addClass('btn-light')
        if (!$(this).hasClass('btn-info')) {
@@ -284,6 +351,7 @@ promise.then(function(data) {
 map.addLayer(baselayer);
 
 var legend = L.control({position: 'bottomright'});
+var difflegend = L.control({position: 'bottomright'});
 
 legend.onAdd = function (map) {
     
@@ -301,6 +369,24 @@ legend.onAdd = function (map) {
             from + (to ? '&ndash;' + to : '+'));
     }
     div.innerHTML = "<h6>Percent</h6>" + labels.join('<br>');
+    return div;
+};
+
+difflegend.onAdd = function (map) {
+    var div = L.DomUtil.create('div', 'diff difflegend'),
+    grades = [-20,-15,-10,-5,-3,-2,-1,0,1,2,3,5,10,15,20],
+    labels = [],
+    from, to;
+
+    for (var i=0; i< grades.length; i++) {
+        from = grades[i];
+        to = grades[i + 1];
+
+        labels.push(
+            '<i style="background:' + getDiffColor(from + 1) + '"></i> ' + 
+            from + (to ? '&ndash;' + to: '+'));
+    }
+    div.innerHTML = "<h6>Share Difference</h6>" + labels.join('<br>');
     return div;
 };
 
