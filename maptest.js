@@ -1,9 +1,29 @@
+// basic map
 var mapboxAccessToken = 'pk.eyJ1Ijoic2NiMDIwMTAiLCJhIjoiY2pzM2Y2eHdjMmVuaTQ1bzN6OGE3MnJrYiJ9.5QDjNpLmtS-Y9N3nP2rLdQ';
 
+var map = new L.Map("map", {
+    zoomControl: false,
+    center: new L.LatLng(41.8781, -87.6298),
+    zoom: 8
+});
+
+var baselayer = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
+    id: 'mapbox.light',
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+    '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+    'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'
+})
+
+map.addLayer(baselayer);
+
+
+// settings for initial page load
 var whichone = 'modshare'
 var firsttime = true
 drawmap()
 
+
+// dropdown button events
 function updateview(buttonarg) {
     if (buttonarg == 'Model') {
         whichone = 'modshare'
@@ -27,8 +47,159 @@ $('.dropdown-menu a').click(function () {
     updateview(($(this).text()));
 });
 
-//style
 
+// start mode button events
+function updatemap() {
+    map.eachLayer(function (layer) {
+        if (![baselayer,cta,metra].includes(layer)) {
+            map.removeLayer(layer);
+    }});
+    // lines overlays not showing even though they are checked...add and remove workaround
+    if (map.hasLayer(cta)) {
+        map.removeLayer(cta);
+        map.addLayer(cta);
+    } 
+
+    if (map.hasLayer(metra)) {
+        map.removeLayer(metra);
+        map.addLayer(metra);
+    }
+    firsttime = false
+    drawmap();
+}
+
+function drawmap() {
+var promise = $.getJSON("ringsectorswtransitboarding.json");
+promise.then(function(data) {
+    var pacestop = L.geoJson(data, {
+        style:pacestyle,
+        onEachFeature: function(feature, layer) {
+            layer.on({
+                'mouseover': highlightFeature,
+                'mouseout': resetHighlightbus
+            });
+        }
+    });
+    var metrastop = L.geoJson(data, {
+        style: metrastyle,
+        onEachFeature: function(feature, layer) {
+            layer.on({
+                'mouseover': highlightFeature,
+                'mouseout': resetHighlightmetra 
+            });
+        }
+    });
+    var ctastop = L.geoJson(data, {
+        style: ctastyle,
+        onEachFeature: function(feature, layer) {
+            layer.on({
+                'mouseover': highlightFeature,
+                'mouseout': resetHighlightcta 
+            });
+        }
+    });
+
+    if (firsttime == true) {
+        metrastop.addTo(map);
+    }
+
+    if (firsttime == false) {
+        if ($("#cta").hasClass('btn-info')) {
+            ctastop.addTo(map);
+        } else if ($("#pace").hasClass('btn-info')) {
+            pacestop.addTo(map);
+        } else if ($("#metra").hasClass('btn-info')) {
+            metrastop.addTo(map);
+        }
+    }
+
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+
+        if (map.hasLayer(cta)) {
+            cta.bringToFront();
+        }
+
+        if (map.hasLayer(metra)) {
+            metra.bringToFront();
+        }
+    }
+
+    $(document).on('click', '#metra', function() {
+       $("#cta").removeClass('btn-info').addClass('btn-light')
+       $("#pace").removeClass('btn-info').addClass('btn-light')
+       if (!$(this).hasClass('btn-info')) {
+        $('.btn').removeClass('btn-light')
+        $(this).addClass('btn-info');
+    }
+        map.eachLayer(function (layer) {
+            if (![baselayer,cta,metra].includes(layer)) {
+                map.removeLayer(layer);
+            }});
+        map.addLayer(metrastop)
+
+        if (map.hasLayer(cta)) {
+            map.removeLayer(cta);
+            map.addLayer(cta);
+        } 
+    
+        if (map.hasLayer(metra)) {
+            map.removeLayer(metra);
+            map.addLayer(metra);
+        }
+
+    });
+    $(document).on('click', '#pace', function() {
+        $("#cta").removeClass('btn-info').addClass('btn-light')
+        $("#metra").removeClass('btn-info').addClass('btn-light')
+        if (!$(this).hasClass('btn-info')) {
+            $('.btn').removeClass('btn-light')
+            $(this).addClass('btn-info');
+        }
+        map.eachLayer(function (layer) {
+            if (![baselayer,cta,metra].includes(layer)) {
+                map.removeLayer(layer);
+            }});
+        map.addLayer(pacestop)
+
+        if (map.hasLayer(cta)) {
+            map.removeLayer(cta);
+            map.addLayer(cta);
+        } 
+    
+        if (map.hasLayer(metra)) {
+            map.removeLayer(metra);
+            map.addLayer(metra);
+        }
+    });
+    $(document).on('click', '#cta', function() {
+        $("#pace").removeClass('btn-info').addClass('btn-light')
+        $("#metra").removeClass('btn-info').addClass('btn-light')
+        if (!$(this).hasClass('btn-info')) {
+            $('.btn').removeClass('btn-light')
+            $(this).addClass('btn-info');
+        }
+        map.eachLayer(function (layer) {
+            if (![baselayer,cta,metra].includes(layer)) {
+            map.removeLayer(layer);
+        }});
+        map.addLayer(ctastop)
+
+        if (map.hasLayer(cta)) {
+            map.removeLayer(cta);
+            map.addLayer(cta);
+        } 
+    
+        if (map.hasLayer(metra)) {
+            map.removeLayer(metra);
+            map.addLayer(metra);
+        }
+
+    });
+});}
+//end mode button events
+
+
+//style
 function pacestyle(feature) {
     if (whichone !== 'sharedif') {
     return {
@@ -95,25 +266,38 @@ function metrastyle(feature) {
         }
     }
 
-//layers
+// style: difference colors
+function getColor(d) {
+    return d > 20 ? '#800026' :
+           d > 15  ? '#BD0026' :
+           d > 10  ? '#E31A1C' :
+           d > 5  ? '#FC4E2A' :
+           d > 3   ? '#FD8D3C' :
+           d > 2   ? '#FEB24C' :
+           d > 1   ? '#FED976' :
+                      '#FFEDA0';
+}
 
-var map = new L.Map("map", {
-    zoomControl: false,
-    center: new L.LatLng(41.8781, -87.6298),
-    zoom: 8
-});
+function getDiffColor(d) {
+    return d > 20 ? '#800026' :
+           d > 15  ? '#BD0026' :
+           d > 10  ? '#E31A1C' :
+           d > 5  ? '#FC4E2A' :
+           d > 3   ? '#FD8D3C' :
+           d > 2   ? '#FEB24C' :
+           d > 1   ? '#FED976' :
+           d < -20  ? '#0570b0' :
+           d < -15  ? '#3690c0' :
+           d < -10  ? '#74a9cf' :
+           d < -5   ? '#a6bddb' :
+           d < -3   ? '#D0D1E6' :
+           d < -2   ? '#ECE7F2' :
+           d < -1   ? '#FFF7FB' :
+                      '#FFEDA0';
+}
 
-L.control.zoom({
-    position: 'bottomleft'
-}).addTo(map);
 
-var baselayer = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=' + mapboxAccessToken, {
-    id: 'mapbox.light',
-    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-    '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-    'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'
-})
-
+// info box
 var info = L.control();
 
 info.onAdd = function(map) {
@@ -162,194 +346,7 @@ function getsharevalue(props) {
 info.addTo(map);
 
 
-function highlightFeature(e) {
-    var layer = e.target;
-
-    layer.setStyle({
-        weight: 5,
-        color: '#666',
-        dashArray: '',
-        fillOpacity: 0.7,
-    });
-
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
-
-    info.update(layer.feature.properties);
-}
-
-var geojson;
-
-function resetHighlightmetra(e) {
-    var layer = e.target;
-
-    layer.setStyle(
-        metrastyle(layer.feature)
-    );
-
-    info.update();
-}
-
-function resetHighlightbus(e) {
-    var layer = e.target;
-
-    layer.setStyle(
-        pacestyle(layer.feature)
-    );
-
-    info.update();
-}
-
-function resetHighlightcta(e) {
-    var layer = e.target;
-
-    layer.setStyle(
-        ctastyle(layer.feature)
-    );
-
-    info.update();
-}
-
-
-// the transit lines
-var metra = L.geoJson(metradata, {
-});
-
-var cta = L.geoJson(ctalines, {
-});
-
-
-// difference colors
-function getColor(d) {
-    return d > 20 ? '#800026' :
-           d > 15  ? '#BD0026' :
-           d > 10  ? '#E31A1C' :
-           d > 5  ? '#FC4E2A' :
-           d > 3   ? '#FD8D3C' :
-           d > 2   ? '#FEB24C' :
-           d > 1   ? '#FED976' :
-                      '#FFEDA0';
-}
-
-function getDiffColor(d) {
-    return d > 20 ? '#800026' :
-           d > 15  ? '#BD0026' :
-           d > 10  ? '#E31A1C' :
-           d > 5  ? '#FC4E2A' :
-           d > 3   ? '#FD8D3C' :
-           d > 2   ? '#FEB24C' :
-           d > 1   ? '#FED976' :
-           d < -20  ? '#0570b0' :
-           d < -15  ? '#3690c0' :
-           d < -10  ? '#74a9cf' :
-           d < -5   ? '#a6bddb' :
-           d < -3   ? '#D0D1E6' :
-           d < -2   ? '#ECE7F2' :
-           d < -1   ? '#FFF7FB' :
-                      '#FFEDA0';
-}
-
-function updatemap() {
-    map.eachLayer(function (layer) {
-        if (layer !== baselayer) {
-            map.removeLayer(layer);
-    }});
-    firsttime = false
-    drawmap();
-}
-
-function drawmap() {
-var promise = $.getJSON("ringsectorswtransitboarding.json");
-promise.then(function(data) {
-    var pacestop = L.geoJson(data, {
-        style:pacestyle,
-        onEachFeature: function(feature, layer) {
-            layer.on({
-                'mouseover': highlightFeature,
-                'mouseout': resetHighlightbus
-            });
-        }
-    });
-    var metrastop = L.geoJson(data, {
-        style: metrastyle,
-        onEachFeature: function(feature, layer) {
-            layer.on({
-                'mouseover': highlightFeature,
-                'mouseout': resetHighlightmetra 
-            });
-        }
-    });
-    var ctastop = L.geoJson(data, {
-        style: ctastyle,
-        onEachFeature: function(feature, layer) {
-            layer.on({
-                'mouseover': highlightFeature,
-                'mouseout': resetHighlightcta 
-            });
-        }
-    });
-
-    if (firsttime == true) {
-        metrastop.addTo(map);
-    }
-
-    if (firsttime == false) {
-        if ($("#cta").hasClass('btn-info')) {
-            ctastop.addTo(map);
-        } else if ($("#pace").hasClass('btn-info')) {
-            pacestop.addTo(map);
-        } else if ($("#metra").hasClass('btn-info')) {
-            metrastop.addTo(map);
-        }
-    }
-
-    $(document).on('click', '#metra', function() {
-       $("#cta").removeClass('btn-info').addClass('btn-light')
-       $("#pace").removeClass('btn-info').addClass('btn-light')
-       if (!$(this).hasClass('btn-info')) {
-        $('.btn').removeClass('btn-light')
-        $(this).addClass('btn-info');
-    }
-    map.eachLayer(function (layer) {
-        if (layer !== baselayer) {
-            map.removeLayer(layer);
-        }});
-        map.addLayer(metrastop)
-
-    });
-    $(document).on('click', '#pace', function() {
-        $("#cta").removeClass('btn-info').addClass('btn-light')
-        $("#metra").removeClass('btn-info').addClass('btn-light')
-        if (!$(this).hasClass('btn-info')) {
-            $('.btn').removeClass('btn-light')
-            $(this).addClass('btn-info');
-        }
-        map.eachLayer(function (layer) {
-            if (layer !== baselayer) {
-                map.removeLayer(layer);
-            }});
-        map.addLayer(pacestop)
-    });
-    $(document).on('click', '#cta', function() {
-        $("#pace").removeClass('btn-info').addClass('btn-light')
-        $("#metra").removeClass('btn-info').addClass('btn-light')
-        if (!$(this).hasClass('btn-info')) {
-            $('.btn').removeClass('btn-light')
-            $(this).addClass('btn-info');
-        }
-        map.eachLayer(function (layer) {
-            if (layer !== baselayer) {
-            map.removeLayer(layer);
-        }});
-        map.addLayer(ctastop)
-
-    });
-});}
-
-//map
-map.addLayer(baselayer);
-
+// legend
 var legend = L.control({position: 'bottomright'});
 var difflegend = L.control({position: 'bottomright'});
 
@@ -391,3 +388,84 @@ difflegend.onAdd = function (map) {
 };
 
 legend.addTo(map);
+
+
+// highlight/unhighlight events
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 5,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7,
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+        layer.bringToFront();
+
+        if (map.hasLayer(cta)) {
+            cta.bringToFront();
+        }
+
+        if (map.hasLayer(metra)) {
+            metra.bringToFront();
+        }
+    }
+    info.update(layer.feature.properties);
+}
+
+var geojson;
+
+function resetHighlightmetra(e) {
+    var layer = e.target;
+
+    layer.setStyle(
+        metrastyle(layer.feature)
+    );
+
+    info.update();
+}
+
+function resetHighlightbus(e) {
+    var layer = e.target;
+
+    layer.setStyle(
+        pacestyle(layer.feature)
+    );
+
+    info.update();
+}
+
+function resetHighlightcta(e) {
+    var layer = e.target;
+
+    layer.setStyle(
+        ctastyle(layer.feature)
+    );
+
+    info.update();
+}
+
+
+// transit lines
+var metra = L.geoJson(metradata, {
+    color: '#696969',
+    opacity: 0.8,
+    weight: 2
+});
+
+var cta = L.geoJson(ctalines, {
+    color: "black",
+    opacity: 0.8,
+    weight: 2
+});
+
+var overlayMaps = {
+    "CTA lines": cta,
+    "Metra lines": metra
+};
+
+var lines = L.control.layers(null, overlayMaps, {collapsed: false, position: 'bottomleft'});
+
+lines.addTo(map);
